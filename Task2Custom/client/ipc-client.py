@@ -9,7 +9,7 @@ import time
 import datetime 
 import numpy as np
 
-HOST = socket.gethostbyname('ipc_server_dns_name')    # The server's hostname or IP address
+HOST = socket.gethostbyname('offloadingserver')    # The server's hostname or IP address
 PORT = 9898         # The port used by the server
 imageDir = './images'
 counter = 0
@@ -18,18 +18,20 @@ totalTimeToSend = []
 computationTime = []
 
 #Connect to the server via socket
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.connect((HOST, PORT))
+for filename in os.listdir(imageDir):
+    startTime = time.time()
+    f = os.path.join(imageDir,filename)
 
-    #loop through all files in the image directory
-    for filename in os.listdir(imageDir):
-        startTime = time.time()
-        f = os.path.join(imageDir,filename)
+    if not os.path.isfile(f):
+        continue
 
-        if not os.path.isfile(f):
-            continue
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.connect((HOST, PORT))
+
+        #loop through all files in the image directory
+
         counter +=1
-        print("---IMAGE ",counter,"---")
+        print("---IMAGE ",counter,":",filename,"---")
 
         #First we want to send the byte count of the file to our server
         imageFile = open(f,'rb')
@@ -54,7 +56,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         # check what server send
         answer = s.recv(8096)
         answer = (answer.decode())
-        print('Received Data',str(answer))
+        print('Received Data')
+        print(str(answer))
         computationTime.append(float(answer.partition("ProcessTime: ")[2]))
         elapsed_time = time.time() - startTime
         totalTimeToSend.append(elapsed_time)

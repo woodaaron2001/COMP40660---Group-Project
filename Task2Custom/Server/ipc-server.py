@@ -5,6 +5,8 @@
 import socket
 from imageai.Detection import ObjectDetection
 from PIL import Image
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 import io
 import time
 import datetime
@@ -23,12 +25,9 @@ detector.loadModel()
 
 
 counter = 0
-HOST = socket.gethostbyname('ipc_server_dns_name')  # Standard loopback interface address (localhost)
+HOST = socket.gethostbyname('offloadingserver')  # Standard loopback interface address (localhost)
 PORT = 9898        # Port to listen on (non-privileged ports are > 1023)
 myRecvSize = 4096
-
-
-
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
   
@@ -41,10 +40,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             
             counter+=1
             
-            print('Connected by', addr)
-            print('Image: ',counter)
-            print()
-            
             while True:
                 
                 data = conn.recv(myRecvSize)
@@ -54,22 +49,19 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
                 #Setting buffersize on receiving data
                 if(txtData.startswith("b\'SIZEDATA")):
-                    
-                    print("Received RTS")
-
+                    myRecvSize = 409600000
                     txtData = str(data.decode())
                     x = txtData.split(',')
                     myRecvSize = int(x[1])
 
                     conn.sendall("ACK".encode())
-                    myRecvSize = 40960000
+
 
                 else:
                     #Timing computation time
                     startProcessTime = time.time()
-                    print("Got Image: Processing")
                     
-                    myRecvSize = 4096
+                    myRecvSize = 409600000
                     # Convert the received bytes data to a Pillow Image object
                     image = Image.open(io.BytesIO(data))
                     image = image.convert('RGB')
@@ -86,9 +78,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     #Formatting results
                     elapsed_time = time.time() - startProcessTime
                     result += "ProcessTime: "+str(elapsed_time)
-                    print("Processed Image Sending results")
-                    print(result)
                     conn.sendall(result.encode())
-                
-                print("Adjusting buffer size for image: ",myRecvSize,"\n")
+                    break
 
